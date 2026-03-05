@@ -19,7 +19,8 @@ The Interactive Age Calculator is a simple web application developed using HTML,
 
 Local preview link:
 
-http://127.0.0.1:5500/index.html.html
+http://127.0.0.1:5500/index.html
+
 
 *(This link works only on the local machine using Live Server in VS Code.)*
 
