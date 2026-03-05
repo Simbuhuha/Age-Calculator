@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Age Calculator</title>
+
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .box {
+        width: min(800px, 100%);
+        background: #111c38;
+        border: 1px solid #223155;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+
+      h1 {
+        margin-top: 0;
+        font-size: 24px;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      @media (max-width: 700px) {
+        .row {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      label {
+        display: block;
+        font-size: 14px;
+        margin-bottom: 6px;
+        opacity: 0.9;
+      }
+
+      input,
+      select,
+      button {
+        width: 100%;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid #2b3b66;
+        background: #0b1227;
+        color: #e2e8f0;
+        outline: none;
+      }
+
+      button {
+        cursor: pointer;
+        font-weight: bold;
+      }
+
+      .btn {
+        background: #2563eb;
+        border: none;
+      }
+
+      .btn:hover {
+        opacity: 0.95;
+      }
+
+      .btn2 {
+        background: transparent;
+        border: 1px solid #2b3b66;
+      }
+
+      .actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+      }
+
+      .error {
+        margin-top: 10px;
+        color: #fca5a5;
+        min-height: 18px;
+        font-size: 14px;
+      }
+
+      .result {
+        margin-top: 18px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+
+      @media (max-width: 700px) {
+        .result {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .card {
+        background: #0b1227;
+        border: 1px solid #2b3b66;
+        border-radius: 14px;
+        padding: 14px;
+      }
+
+      .card h3 {
+        margin: 0 0 10px;
+        font-size: 14px;
+        opacity: 0.9;
+      }
+
+      .big {
+        font-size: 22px;
+        font-weight: 800;
+      }
+
+      .small {
+        font-size: 14px;
+        opacity: 0.9;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="box">
+      <h1>Age Calculator (Interactive)</h1>
+
+      <div class="row">
+        <div>
+          <label>Date of Birth</label>
+          <input type="date" id="dob" />
+        </div>
+
+        <div>
+          <label>Time of Birth (optional)</label>
+          <input type="time" id="tob" step="1" value="00:00" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Mode</label>
+          <select id="mode">
+            <option value="live">Live (updates every second)</option>
+            <option value="fixed">Fixed (use selected date-time)</option>
+          </select>
+        </div>
+
+        <div>
+          <label>As Of (only for Fixed mode)</label>
+          <input type="datetime-local" id="asof" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="calcBtn">Calculate</button>
+        <button class="btn2" id="resetBtn">Reset</button>
+      </div>
+
+      <div class="error" id="errorMsg"></div>
+
+      <div class="result">
+        <div class="card">
+          <h3>Exact Age</h3>
+          <div class="big" id="exactAge">—</div>
+          <div class="small">Years · Months · Days</div>
+        </div>
+
+        <div class="card">
+          <h3>Total Time</h3>
+          <div class="small" id="totalTime">—</div>
+        </div>
+
+        <div class="card">
+          <h3>Next Birthday</h3>
+          <div class="big" id="nextBday">—</div>
+          <div class="small" id="nextBdayHint">Days remaining</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const dobInput = document.getElementById("dob");
+      const tobInput = document.getElementById("tob");
+      const modeInput = document.getElementById("mode");
+      const asofInput = document.getElementById("asof");
+
+      const exactAgeEl = document.getElementById("exactAge");
+      const totalTimeEl = document.getElementById("totalTime");
+      const nextBdayEl = document.getElementById("nextBday");
+      const nextBdayHintEl = document.getElementById("nextBdayHint");
+      const errorMsg = document.getElementById("errorMsg");
+
+      const calcBtn = document.getElementById("calcBtn");
+      const resetBtn = document.getElementById("resetBtn");
+
+      let timerId = null;
+      let storedDob = null;
+
+      function showError(msg) {
+        errorMsg.textContent = msg;
+      }
+
+      function clearError() {
+        errorMsg.textContent = "";
+      }
+
+      function pad(n) {
+        return String(n).padStart(2, "0");
+      }
+
+      function setDefaultAsOf() {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = pad(now.getMonth() + 1);
+        const dd = pad(now.getDate());
+        const hh = pad(now.getHours());
+        const mi = pad(now.getMinutes());
+        asofInput.value = `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+      }
+      setDefaultAsOf();
+
+      function getDobDate() {
+        const dob = dobInput.value;
+        if (!dob) return null;
+
+        let time = tobInput.value || "00:00:00";
+        if (time.length === 5) time = time + ":00";
+
+        return new Date(`${dob}T${time}`);
+      }
+
+      // Calendar accurate difference in years, months, days
+      function getYearsMonthsDays(from, to) {
+        let years = to.getFullYear() - from.getFullYear();
+        let months = to.getMonth() - from.getMonth();
+        let days = to.getDate() - from.getDate();
+
+        if (days < 0) {
+          // borrow days from previous month
+          const lastDayPrevMonth = new Date(
+            to.getFullYear(),
+            to.getMonth(),
+            0,
+          ).getDate();
+          days += lastDayPrevMonth;
+          months--;
+        }
+
+        if (months < 0) {
+          months += 12;
+          years--;
+        }
+
+        return { years, months, days };
+      }
+
+      function getTotals(from, to) {
+        const diffMs = to - from;
+        const totalSeconds = Math.floor(diffMs / 1000);
+        const totalMinutes = Math.floor(totalSeconds / 60);
+        const totalHours = Math.floor(totalMinutes / 60);
+        const totalDays = Math.floor(totalHours / 24);
+        return { totalDays, totalHours, totalMinutes, totalSeconds };
+      }
+
+      function getNextBirthday(dob, now) {
+        let next = new Date(
+          now.getFullYear(),
+          dob.getMonth(),
+          dob.getDate(),
+          0,
+          0,
+          0,
+        );
+
+        const todayMid = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          0,
+          0,
+          0,
+        );
+        if (next < todayMid) {
+          next = new Date(
+            now.getFullYear() + 1,
+            dob.getMonth(),
+            dob.getDate(),
+            0,
+            0,
+            0,
+          );
+        }
+
+        const diffDays = Math.ceil((next - now) / (1000 * 60 * 60 * 24));
+        return { nextDate: next, daysLeft: diffDays };
+      }
+
+      function formatDate(d) {
+        return d.toLocaleDateString(undefined, {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+      }
+
+      function updateResult(dob, asOf) {
+        if (asOf < dob) {
+          showError("DOB must be earlier than the selected date/time.");
+          return;
+        }
+        clearError();
+
+        const ymd = getYearsMonthsDays(dob, asOf);
+        exactAgeEl.textContent = `${ymd.years} years, ${ymd.months} months, ${ymd.days} days`;
+
+        const totals = getTotals(dob, asOf);
+        totalTimeEl.innerHTML =
+          `Total Days: <b>${totals.totalDays}</b><br>` +
+          `Total Hours: <b>${totals.totalHours}</b><br>` +
+          `Total Minutes: <b>${totals.totalMinutes}</b><br>` +
+          `Total Seconds: <b>${totals.totalSeconds}</b>`;
+
+        const nb = getNextBirthday(dob, asOf);
+        nextBdayEl.textContent = `${nb.daysLeft} days`;
+        nextBdayHintEl.textContent = `Next birthday: ${formatDate(nb.nextDate)}`;
+      }
+
+      function stopLive() {
+        if (timerId) {
+          clearInterval(timerId);
+          timerId = null;
+        }
+      }
+
+      function startLive(dob) {
+        stopLive();
+        timerId = setInterval(() => {
+          updateResult(dob, new Date());
+        }, 1000);
+      }
+
+      calcBtn.addEventListener("click", () => {
+        const dob = getDobDate();
+        if (!dob || isNaN(dob.getTime())) {
+          showError("Please select a valid Date of Birth.");
+          return;
+        }
+
+        storedDob = dob;
+
+        if (modeInput.value === "live") {
+          updateResult(dob, new Date());
+          startLive(dob);
+        } else {
+          stopLive();
+          const asOfValue = asofInput.value;
+          const asOf = asOfValue ? new Date(asOfValue) : new Date();
+          updateResult(dob, asOf);
+        }
+      });
+
+      modeInput.addEventListener("change", () => {
+        if (!storedDob) return;
+
+        if (modeInput.value === "live") {
+          updateResult(storedDob, new Date());
+          startLive(storedDob);
+        } else {
+          stopLive();
+        }
+      });
+
+      resetBtn.addEventListener("click", () => {
+        stopLive();
+        storedDob = null;
+
+        dobInput.value = "";
+        tobInput.value = "00:00";
+        modeInput.value = "live";
+        setDefaultAsOf();
+
+        exactAgeEl.textContent = "—";
+        totalTimeEl.textContent = "—";
+        nextBdayEl.textContent = "—";
+        nextBdayHintEl.textContent = "Days remaining";
+        clearError();
+      });
+    </script>
+  </body>
+</html>
