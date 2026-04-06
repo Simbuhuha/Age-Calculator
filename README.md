@@ -19,7 +19,7 @@ The Interactive Age Calculator is a simple web application developed using HTML,
 
 Local preview link:
 
-file:///E:/simbussa/HTML/Age%20Calculator/index.html
+(http://127.0.0.1:5500/index.html.html)
 
 
 *(This link works only on the local machine using Live Server in VS Code.)*
